@@ -41,7 +41,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
   String _textInputData = "";
   String _passwordInputData = "";
   String _resultInputData = "";
-  bool _isButtonUIHidden = false;
+  bool   _islodingUIHidden = true;
   String encryptionMethod = 'AES-GCM';
   bool _isTextFieldEnabled = true;
   final TextEditingController _controller1 = TextEditingController();
@@ -92,90 +92,88 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
   }
 
   void _validateInput() async {
-    setState(() {
-      _isButtonUIHidden = true;
-    });
-    if(encryptionMethod == 'BASE32' || encryptionMethod == 'BASE64') {
-      if (_textInputData.isEmpty) {
-        _showAlertDialog();
+    setState(() async {
+      _islodingUIHidden = false;
+      if(encryptionMethod == 'BASE32' || encryptionMethod == 'BASE64') {
+        if (_textInputData.isEmpty) {
+          _showAlertDialog();
+        } else {
+          await getOutput();
+        }
       } else {
-        await getOutput();
+        if (_textInputData.isEmpty || _passwordInputData.isEmpty) {
+          _showAlertDialog();
+        } else {
+          await getOutput();
+        }
       }
-    } else {
-      if (_textInputData.isEmpty || _passwordInputData.isEmpty) {
-        _showAlertDialog();
-      } else {
-        await getOutput();
-      }
-    }
-    setState(() {
-      _isButtonUIHidden = false;
-      print("_isButtonUIHidden reset to $_isButtonUIHidden");
+      setState(() {
+        _islodingUIHidden = true;
+      });
     });
   }
 
   void calculatingState(){
     setState(() {
       _actionBtn = "Computing...";
-      _isButtonUIHidden = false;
-      print("_isButtonUIHidden set to $_isButtonUIHidden");
+      _islodingUIHidden = false;
     });
   }
 
   Future<void> getOutput() async {
-    // await Future.delayed(Duration(seconds: 20));
-    print('=>>getOutput function got  called');
-    _collectInput();
-    _collectPassword();
+    setState(() async {
+      // await Future.delayed(Duration(seconds: 20));
+      print('=>>getOutput function got  called');
+      _collectInput();
+      _collectPassword();
 
-    String outputData = '';
+      String outputData = '';
 
-    if (_actionBtn == 'Encrypt') {
-      calculatingState();
-      switch (encryptionMethod) {
-        case 'AES-GCM':
-          outputData = await encryptGCM(_textInputData, _passwordInputData);
-          break;
-        case 'AES-CBC':
-          outputData = await encryptCBC(_textInputData, _passwordInputData);
-          break;
-        case 'BASE64':
-          outputData = encodeToBase64(_textInputData);
-          break;
-        case 'BASE32':
-          outputData = base32Encode(_textInputData);
-          break;
+      if (_actionBtn == 'Encrypt') {
+        calculatingState();
+        switch (encryptionMethod) {
+          case 'AES-GCM':
+            outputData = await encryptGCM(_textInputData, _passwordInputData);
+            break;
+          case 'AES-CBC':
+            outputData = await encryptCBC(_textInputData, _passwordInputData);
+            break;
+          case 'BASE64':
+            outputData = encodeToBase64(_textInputData);
+            break;
+          case 'BASE32':
+            outputData = base32Encode(_textInputData);
+            break;
+        }
+        setState(() {
+          _resultInputData = outputData;
+          _islodingUIHidden = true;
+          _actionBtn = "Encrypt";
+        });
+
+      } else if (_actionBtn == 'Decrypt') {
+        calculatingState();
+        switch (encryptionMethod) {
+          case 'AES-GCM':
+            outputData = await decryptGCM(_textInputData, _passwordInputData);
+            break;
+          case 'AES-CBC':
+            outputData = await decryptCBC(_textInputData, _passwordInputData);
+            break;
+          case 'BASE64':
+            outputData = decodeFromBase64(_textInputData);
+            break;
+          case 'BASE32':
+            outputData = base32Decode(_textInputData);
+            break;
+        }
+        setState(() {
+          _resultInputData = outputData;
+          _islodingUIHidden = true;
+          _actionBtn = "Decrypt";
+        });
       }
-      setState(() {
-        _resultInputData = outputData;
-        _isButtonUIHidden = true;
-        _actionBtn = "Encrypt";
-        print("_isButtonUIHidden reset to $_isButtonUIHidden");
-      });
-
-    } else if (_actionBtn == 'Decrypt') {
-      calculatingState();
-      switch (encryptionMethod) {
-        case 'AES-GCM':
-          outputData = await decryptGCM(_textInputData, _passwordInputData);
-          break;
-        case 'AES-CBC':
-          outputData = await decryptCBC(_textInputData, _passwordInputData);
-          break;
-        case 'BASE64':
-          outputData = decodeFromBase64(_textInputData);
-          break;
-        case 'BASE32':
-          outputData = base32Decode(_textInputData);
-          break;
-      }
-      setState(() {
-        _resultInputData = outputData;
-        _isButtonUIHidden = true;
-        _actionBtn = "Decrypt";
-        print("_isButtonUIHidden reset to $_isButtonUIHidden");
-      });
-    }
+    });
   }
 
   void _showAlertDialog() {
@@ -325,7 +323,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                 ),
                 const SizedBox(height: 16),
                 Center(
-                  child: !_isButtonUIHidden
+                  child: _islodingUIHidden
                       ? ElevatedButton(
                     onPressed: _validateInput,
                     style: ElevatedButton.styleFrom(
