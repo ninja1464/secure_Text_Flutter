@@ -1,24 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
-
-
-String _EncryptionMethodLabel = "Select Encryption Method";
-String _StringDataLabel = "Text String";
-String _PasswordDataLabel = "Encryption Password";
-String _ResultDataLabel = "Encrypted Data";
-Color _encryptBtnColor = Color(0xFF007bff);
-Color _decryptBtnColor = Color(0xFF4ebb78);
-String _actionBtn = "Encrypt";
-String _textInputData = "";
-String _passwordInputData = "";
-String _resultInputData = "";
+import 'package:secure_text_flutter/algorithms/aes-cbc.dart';
+import 'package:secure_text_flutter/algorithms/aes_gcm.dart';
+import 'package:secure_text_flutter/algorithms/base32.dart';
+import 'package:secure_text_flutter/algorithms/base64.dart';
 
 void main() {
-  runApp(SecureTextApp());
+  runApp(const SecureTextApp());
 }
 
 class SecureTextApp extends StatelessWidget {
+  const SecureTextApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -38,63 +31,200 @@ class SecureTextScreen extends StatefulWidget {
 }
 
 class _SecureTextScreenState extends State<SecureTextScreen> {
+  String _encryptionMethodLabel = "Select Encryption Method";
+  String _stringDataLabel = "Text String";
+  String _passwordDataLabel = "Encryption Password";
+  String _resultDataLabel = "Encrypted Data";
+  Color _encryptBtnColor = const Color(0xFF007bff);
+  Color _decryptBtnColor = const Color(0xFF4ebb78);
+  String _actionBtn = "Encrypt";
+  String _textInputData = "";
+  String _passwordInputData = "";
+  String _resultInputData = "";
+  bool _isButtonUIHidden = false;
   String encryptionMethod = 'AES-GCM';
-  String inputText = '';
-  String password = '';
-  String resultText = '';
+  bool _isTextFieldEnabled = true;
+  final TextEditingController _controller1 = TextEditingController();
+  final TextEditingController _controller2 = TextEditingController();
 
   void encryptText() {
     setState(() {
-      setState(() {
-        _StringDataLabel = "Text String";
-        _PasswordDataLabel = "Encryption Password";
-        _ResultDataLabel = "Encrypted Data";
-        _EncryptionMethodLabel = "Select Encryption Method";
-        _encryptBtnColor = Color(0xFF007bff);
-        _decryptBtnColor = Color(0xFF4ebb78);
-        _actionBtn = "Encrypt";
-      });
-      print("Encryption Method selected");
-      // base64();
+      _stringDataLabel = "Text String";
+      _passwordDataLabel = "Encryption Password";
+      _resultDataLabel = "Encrypted Data";
+      _encryptionMethodLabel = "Select Encryption Method";
+      _encryptBtnColor = const Color(0xFF007bff);
+      _decryptBtnColor = const Color(0xFF4ebb78);
+      _actionBtn = "Encrypt";
     });
+    print("Encryption Method selected");
   }
 
   void decryptText() {
     setState(() {
-      setState(() {
-        _StringDataLabel = "Encrypted String";
-        _PasswordDataLabel = "Decryption Password";
-        _ResultDataLabel = "Decrypted Data";
-        _EncryptionMethodLabel = "Select Decryption Method";
-        _encryptBtnColor = Color(0xFF4ebb78);
-        _decryptBtnColor = Color(0xFF007bff);
-        _actionBtn = "Decrypt";
-      });
-      print('Decryption Method selected'); // Print "Hello Bunty" when the Decrypt button is clicked
+      _stringDataLabel = "Encrypted String";
+      _passwordDataLabel = "Decryption Password";
+      _resultDataLabel = "Decrypted Data";
+      _encryptionMethodLabel = "Select Decryption Method";
+      _encryptBtnColor = const Color(0xFF4ebb78);
+      _decryptBtnColor = const Color(0xFF007bff);
+      _actionBtn = "Decrypt";
+    });
+    print('Decryption Method selected');
+  }
+
+  void _collectInput() {
+    setState(() {
+      _textInputData = _controller1.text;
     });
   }
 
-  void getOutput() {
+  void _collectPassword() {
     setState(() {
-      resultText = 'Decrypted with $encryptionMethod: $inputText';
-      print('Performed Encryyption');
+      _passwordInputData = _controller2.text;
     });
+  }
+
+  void _toggleTextFieldState(bool state) {
+    setState(() {
+      _isTextFieldEnabled = state; // Toggle the boolean state
+    });
+  }
+
+  void _validateInput() async {
+    setState(() {
+      _isButtonUIHidden = true;
+    });
+    if(encryptionMethod == 'BASE32' || encryptionMethod == 'BASE64') {
+      if (_textInputData.isEmpty) {
+        _showAlertDialog();
+      } else {
+        await getOutput();
+      }
+    } else {
+      if (_textInputData.isEmpty || _passwordInputData.isEmpty) {
+        _showAlertDialog();
+      } else {
+        await getOutput();
+      }
+    }
+    setState(() {
+      _isButtonUIHidden = false;
+      print("_isButtonUIHidden reset to $_isButtonUIHidden");
+    });
+  }
+
+  void calculatingState(){
+    setState(() {
+      _actionBtn = "Computing...";
+      _isButtonUIHidden = false;
+      print("_isButtonUIHidden set to $_isButtonUIHidden");
+    });
+  }
+
+  Future<void> getOutput() async {
+    // await Future.delayed(Duration(seconds: 20));
+    print('=>>getOutput function got  called');
+    _collectInput();
+    _collectPassword();
+
+    String outputData = '';
+
+    if (_actionBtn == 'Encrypt') {
+      calculatingState();
+      switch (encryptionMethod) {
+        case 'AES-GCM':
+          outputData = await encryptGCM(_textInputData, _passwordInputData);
+          break;
+        case 'AES-CBC':
+          outputData = await encryptCBC(_textInputData, _passwordInputData);
+          break;
+        case 'BASE64':
+          outputData = encodeToBase64(_textInputData);
+          break;
+        case 'BASE32':
+          outputData = base32Encode(_textInputData);
+          break;
+      }
+      setState(() {
+        _resultInputData = outputData;
+        _isButtonUIHidden = true;
+        _actionBtn = "Encrypt";
+        print("_isButtonUIHidden reset to $_isButtonUIHidden");
+      });
+
+    } else if (_actionBtn == 'Decrypt') {
+      calculatingState();
+      switch (encryptionMethod) {
+        case 'AES-GCM':
+          outputData = await decryptGCM(_textInputData, _passwordInputData);
+          break;
+        case 'AES-CBC':
+          outputData = await decryptCBC(_textInputData, _passwordInputData);
+          break;
+        case 'BASE64':
+          outputData = decodeFromBase64(_textInputData);
+          break;
+        case 'BASE32':
+          outputData = base32Decode(_textInputData);
+          break;
+      }
+      setState(() {
+        _resultInputData = outputData;
+        _isButtonUIHidden = true;
+        _actionBtn = "Decrypt";
+        print("_isButtonUIHidden reset to $_isButtonUIHidden");
+      });
+    }
+  }
+
+  void _showAlertDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(20.0)),
+          ),
+          backgroundColor: Colors.black,
+          title: const Text(
+            'Secure Text',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            'Please enter both text and password to encrypt/decrypt.',
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'OK',
+                style: TextStyle(color: Colors.blue),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Center(
+        title: const Center(
           child: Text(
             'Secure Text',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
-        backgroundColor: Color(0xFF007bff),
+        backgroundColor: const Color(0xFF007bff),
       ),
       body: Container(
-        color: Color(0xFF4ebb78),
+        color: const Color(0xFF4ebb78),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: SingleChildScrollView(
@@ -111,18 +241,18 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                           backgroundColor: _encryptBtnColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            side: BorderSide(color: Colors.white, width: 2.0),
+                            side: const BorderSide(color: Colors.white, width: 2.0),
                           ),
                         ),
-                        child: Text(
-                          'Encrypt',
+                        child: const Text(
+                          'Select Encrypt',
                           style: TextStyle(
                             color: Colors.white,
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Flexible(
                       child: ElevatedButton(
                         onPressed: decryptText,
@@ -130,11 +260,11 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                           backgroundColor: _decryptBtnColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8.0),
-                            side: BorderSide(color: Colors.white, width: 2.0),
+                            side: const BorderSide(color: Colors.white, width: 2.0),
                           ),
                         ),
-                        child: Text(
-                          'Decrypt',
+                        child: const Text(
+                          'Select Decrypt',
                           style: TextStyle(
                             color: Colors.white,
                           ),
@@ -143,10 +273,10 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
-                  _EncryptionMethodLabel,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _encryptionMethodLabel,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,94 +287,97 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                     buildRadioListTile('BASE32'),
                   ],
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
-                  _StringDataLabel,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _stringDataLabel,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Enter String',
+                  controller: _controller1,
+                  decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     hintText: 'Enter text to encrypt/decrypt',
+                    fillColor: Colors.white,
+                    filled: true,
                   ),
                   onChanged: (value) {
-                    inputText = value;
+                    _textInputData = value;
                   },
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
-                  _PasswordDataLabel,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _passwordDataLabel,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Password',
+                  controller: _controller2,
+                  decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     hintText: 'Enter password',
+                    fillColor: Colors.white,
+                    filled: true,
                   ),
                   obscureText: true,
+                  enabled: _isTextFieldEnabled,
                   onChanged: (value) {
-                    password = value;
+                    _passwordInputData = value;
                   },
                 ),
-                SizedBox(height: 16),
-
-                // Add a button in the center
+                const SizedBox(height: 16),
                 Center(
-                  child: ElevatedButton(
-                    onPressed: getOutput, // Define the action that should be taken when the button is pressed
-                    child: Text(_actionBtn),
+                  child: !_isButtonUIHidden
+                      ? ElevatedButton(
+                    onPressed: _validateInput,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF007bff), // Background color
-                      foregroundColor: Colors.white, // Text color
+                      backgroundColor: const Color(0xFF007bff),
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(color: Colors.white, width: 2.0),// Border radius
+                        side: const BorderSide(color: Colors.white, width: 2.0),
                       ),
                     ),
-                  ),
+                    child: Text(_actionBtn),
+                  )
+                      : const CircularProgressIndicator(),
                 ),
-
-
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
-                  _ResultDataLabel,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _resultDataLabel,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   width: double.infinity,
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.black),
                     borderRadius: BorderRadius.circular(4),
+                    color: Colors.white,
                   ),
                   height: 90,
                   child: SingleChildScrollView(
-                    child: Text(resultText),
+                    child: Text(_resultInputData),
                   ),
                 ),
-                SizedBox(height: 5),
+                const SizedBox(height: 5),
                 ElevatedButton(
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: resultText));
+                    Clipboard.setData(ClipboardData(text: _resultInputData));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Copied to clipboard!')),
+                      const SnackBar(content: Text('Copied to clipboard!')),
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFe0e0e0), // Background color
-                    foregroundColor: Colors.black, // Text color
+                    backgroundColor: const Color(0xFFe0e0e0),
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.black, width: 2.0),// Border radius
+                      side: const BorderSide(color: Colors.black, width: 2.0),
                     ),
-                    minimumSize: Size(50, 10), // Set the minimum width and height
-                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10), // Internal padding
+                    minimumSize: const Size(50, 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   ),
-                  child: Text('Copy'),
+                  child: const Text('Copy'),
                 ),
-
               ],
             ),
           ),
@@ -261,6 +394,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
       onChanged: (value) {
         setState(() {
           encryptionMethod = value!;
+          _toggleTextFieldState(value != 'BASE64' && value != 'BASE32');
         });
       },
     );
