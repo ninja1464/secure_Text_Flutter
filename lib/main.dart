@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:secure_text_flutter/algorithms/aes-cbc.dart';
+import 'package:secure_text_flutter/algorithms/aes_cbc.dart';
 import 'package:secure_text_flutter/algorithms/aes_gcm.dart';
 import 'package:secure_text_flutter/algorithms/base32.dart';
 import 'package:secure_text_flutter/algorithms/base64.dart';
@@ -40,8 +40,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
   String _actionBtn = "Encrypt";
   String _textInputData = "";
   String _passwordInputData = "";
-  String _resultInputData = "";
-  bool   _islodingUIHidden = true;
+  String _resultInputData = "Process Might Take Few Seconds";
   String encryptionMethod = 'AES-GCM';
   bool _isTextFieldEnabled = true;
   final TextEditingController _controller1 = TextEditingController();
@@ -49,6 +48,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
 
   void encryptText() {
     setState(() {
+      _resultInputData =  "Process Might Take Few Seconds";
       _stringDataLabel = "Text String";
       _passwordDataLabel = "Encryption Password";
       _resultDataLabel = "Encrypted Data";
@@ -62,6 +62,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
 
   void decryptText() {
     setState(() {
+      _resultInputData =  "Process Might Take Few Seconds";
       _stringDataLabel = "Encrypted String";
       _passwordDataLabel = "Decryption Password";
       _resultDataLabel = "Decrypted Data";
@@ -93,7 +94,6 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
 
   void _validateInput() async {
     setState(() async {
-      _islodingUIHidden = false;
       if(encryptionMethod == 'BASE32' || encryptionMethod == 'BASE64') {
         if (_textInputData.isEmpty) {
           _showAlertDialog();
@@ -107,16 +107,6 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
           await getOutput();
         }
       }
-      setState(() {
-        _islodingUIHidden = true;
-      });
-    });
-  }
-
-  void calculatingState(){
-    setState(() {
-      _actionBtn = "Computing...";
-      _islodingUIHidden = false;
     });
   }
 
@@ -130,7 +120,6 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
       String outputData = '';
 
       if (_actionBtn == 'Encrypt') {
-        calculatingState();
         switch (encryptionMethod) {
           case 'AES-GCM':
             outputData = await encryptGCM(_textInputData, _passwordInputData);
@@ -145,14 +134,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
             outputData = base32Encode(_textInputData);
             break;
         }
-        setState(() {
-          _resultInputData = outputData;
-          _islodingUIHidden = true;
-          _actionBtn = "Encrypt";
-        });
-
       } else if (_actionBtn == 'Decrypt') {
-        calculatingState();
         switch (encryptionMethod) {
           case 'AES-GCM':
             outputData = await decryptGCM(_textInputData, _passwordInputData);
@@ -167,12 +149,13 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
             outputData = base32Decode(_textInputData);
             break;
         }
-        setState(() {
-          _resultInputData = outputData;
-          _islodingUIHidden = true;
-          _actionBtn = "Decrypt";
-        });
       }
+      setState(() {
+        if (outputData == ""){
+          _showAlertDialog();
+        }
+        _resultInputData = outputData;
+      });
     });
   }
 
@@ -323,8 +306,7 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                 ),
                 const SizedBox(height: 16),
                 Center(
-                  child: _islodingUIHidden
-                      ? ElevatedButton(
+                  child: ElevatedButton(
                     onPressed: _validateInput,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF007bff),
@@ -336,7 +318,6 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                     ),
                     child: Text(_actionBtn),
                   )
-                      : const CircularProgressIndicator(),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -344,16 +325,19 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Container(
-                  padding: const EdgeInsets.all(8),
-                  width: double.infinity,
+                  padding: const EdgeInsets.all(8), // Padding inside the container
+                  width: double.infinity, // Container will take the full width available
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black),
-                    borderRadius: BorderRadius.circular(4),
-                    color: Colors.white,
+                    border: Border.all(color: Colors.black), // Black border color
+                    borderRadius: BorderRadius.circular(4), // Rounded corners
+                    color: Colors.white, // Black background color
                   ),
-                  height: 90,
+                  height: 90, // Fixed height of the container
                   child: SingleChildScrollView(
-                    child: Text(_resultInputData),
+                    child: Text(
+                      _resultInputData,
+                      style: const TextStyle(color: Colors.black), // White text color for better visibility on black background
+                    ),
                   ),
                 ),
                 const SizedBox(height: 5),
