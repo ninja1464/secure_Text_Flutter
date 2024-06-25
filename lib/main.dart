@@ -56,13 +56,15 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
       _encryptBtnColor = const Color(0xFF007bff);
       _decryptBtnColor = const Color(0xFF4ebb78);
       _actionBtn = "Encrypt";
+      _controller1.text = '';
+      _controller2.text = '';
     });
     print("Encryption Method selected");
   }
 
   void decryptText() {
     setState(() {
-      _resultInputData =  "Process Might Take Few Seconds";
+      _resultInputData =  "Process Might Take Few Seconds, It Will Not Work If Data Provided Is Wrong.";
       _stringDataLabel = "Encrypted String";
       _passwordDataLabel = "Decryption Password";
       _resultDataLabel = "Decrypted Data";
@@ -70,6 +72,8 @@ class _SecureTextScreenState extends State<SecureTextScreen> {
       _encryptBtnColor = const Color(0xFF4ebb78);
       _decryptBtnColor = const Color(0xFF007bff);
       _actionBtn = "Decrypt";
+      _controller1.text = '';
+      _controller2.text = '';
     });
     print('Decryption Method selected');
   }
